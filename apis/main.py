@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv("service/.env")
 
 from service.twelvelabs_summary import TwelveLabsSummarizer  # noqa: E402
+from service.cloudglue_summary import CloudglueSummarizer  # noqa: E402
 
 
 app = FastAPI(title="Swipe Service API", version="0.1.0")
@@ -22,6 +23,7 @@ class SummarizeRequest(BaseModel):
     style: Optional[str] = None
     language: Optional[str] = None
     allow_download: Optional[bool] = None  # override env fallback per-request
+    provider: Optional[str] = None  # "twelvelabs" | "cloudglue"
 
 @app.post("/summarize")
 def summarize(req: SummarizeRequest) -> dict:
@@ -29,11 +31,22 @@ def summarize(req: SummarizeRequest) -> dict:
     if not url:
         raise HTTPException(status_code=400, detail="Provide youtube_url or video_url")
 
+    provider = (req.provider or os.getenv("SUMMARY_PROVIDER") or "twelvelabs").lower()
     try:
-        summarizer = TwelveLabsSummarizer.from_env()
+        if provider == "cloudglue":
+            cg = CloudglueSummarizer.from_env()
+            result = cg.summarize_url(
+                media_url=url,
+                style=req.style,
+                language=req.language,
+                youtube=bool(req.youtube_url),
+            )
+            return result
+        # default: Twelve Labs
+        tw = TwelveLabsSummarizer.from_env()
         if req.allow_download is not None:
-            summarizer.config.allow_youtube_download_fallback = bool(req.allow_download)
-        result = summarizer.summarize_youtube(
+            tw.config.allow_youtube_download_fallback = bool(req.allow_download)
+        result = tw.summarize_youtube(
             youtube_url=url,
             style=req.style,
             language=req.language,
