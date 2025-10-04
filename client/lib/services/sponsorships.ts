@@ -103,8 +103,6 @@ async function findSponsors(
 
     const url = `${SPONSOR_API}?${params}`;
 
-    console.log("url : ", url);
-
     const sponsors = await makeRequest(url, {
       method: "GET",
       headers: {
@@ -121,21 +119,22 @@ async function findSponsors(
 
 // Example usage for sponsorships
 async function findSponsorships(
-  brand_name?: string,
+  brand?: string,
   publication_url?: string,
   cursor?: string
 ) {
   // if not brand name or publication url then throw error
-  if (!brand_name && !publication_url) {
-    throw new Error("Either brand_name or publication_url must be provided.");
+  if (!brand && !publication_url) {
+    throw new Error("Either brand or publication_url must be provided.");
   }
 
   try {
     const params = new URLSearchParams();
 
-    if (brand_name) {
-      params.append("brand_name", brand_name);
+    if (brand) {
+      params.append("brand_name", brand);
     }
+
     if (publication_url) {
       params.append("publication_url", publication_url);
     }
@@ -147,12 +146,14 @@ async function findSponsorships(
     params.append("top_k_categories", "5");
 
     const url = `${SPONSORSHIP_API}?${params}`;
+    console.log("url : ", url);
 
     const sponsorships = await makeRequest(url, {
       method: "GET",
       headers: {
         "X-Api-Key": UPRIVER_API_KEY!,
       },
+      timeout: 999999,
     });
     return sponsorships;
   } catch (error) {

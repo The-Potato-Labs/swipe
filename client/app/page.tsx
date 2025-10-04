@@ -1,15 +1,14 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useEffect, memo } from "react";
-import SponsorshipCard from "@/components/SponsorshipCard";
+import { useState, useEffect, memo, useRef } from "react";
 import SponsorResultCard from "@/components/SponsorResultCard";
+import SponsorshipResultCard from "@/components/SponsorshipResultCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { findSponsors } from "@/lib/services/sponsorships";
+import { findSponsors, findSponsorships } from "@/lib/services/sponsorships";
 import { Sponsor } from "@/lib/models/sponsors";
-import videoExamples from "@/lib/video_examples.json";
 import { Spinner } from "@/components/ui/spinner";
+import { Sponsorship } from "@/lib/models/sponsorship";
 import {
   Select,
   SelectContent,
@@ -18,21 +17,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// TODO: just do results combined for sponsors and sponsorships
+// reset if search changes
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("tech");
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<Sponsor[]>([]);
-  const [selectValue, setSelectValue] = useState("category");
+  const [sponsorResults, setSponsorResults] = useState<Sponsor[]>([]);
+  const [sponsorshipResults, setSponsorshipResults] = useState<Sponsorship[]>(
+    []
+  );
+  const [searchType, setSearchType] = useState("category");
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     handleSearch();
   }, []);
 
+  useEffect(() => {
+    // Don't clear anything when search type changes
+    isInitialLoad.current = false;
+  }, [searchType]);
+
   const handleSearch = async (query?: string, currentCursor?: string) => {
     console.log("currentCursor : ", currentCursor);
+    console.log("searchType : ", searchType);
+
     const searchTerm = query || searchQuery;
     if (!searchTerm.trim()) {
       setError("Please enter an industry or category to search");
@@ -49,19 +62,40 @@ export default function Home() {
     setError(null);
 
     try {
-      const result = (await findSponsors(
-        searchTerm.trim(),
-        undefined,
-        currentCursor
-      )) as any;
-      const sponsors = result.results;
+      let result;
+      if (searchType === "category") {
+        result = (await findSponsors(
+          searchTerm.trim(),
+          undefined,
+          currentCursor
+        )) as any;
+      } else {
+        result = (await findSponsorships(
+          searchTerm.trim(),
+          undefined,
+          currentCursor
+        )) as any;
+      }
+
+      const results = result.results;
+      console.log("results : ", results);
 
       if (currentCursor) {
         // If there's a current cursor, append results to existing ones
-        setSearchResults((prevResults) => [...prevResults, ...sponsors]);
+        if (searchType === "category") {
+          setSponsorResults((prevResults) => [...prevResults, ...results]);
+        } else {
+          setSponsorshipResults((prevResults) => [...prevResults, ...results]);
+        }
       } else {
         // If no cursor, replace results (new search)
-        setSearchResults(sponsors);
+        if (searchType === "category") {
+          setSponsorResults(results);
+          setSponsorshipResults([]); // Clear sponsorship results when searching categories
+        } else {
+          setSponsorshipResults(results);
+          setSponsorResults([]); // Clear sponsor results when searching brands
+        }
       }
 
       // set next cursor if available
@@ -81,8 +115,16 @@ export default function Home() {
     }
   };
 
+  const getCurrentResults = () => {
+    return searchType === "category" ? sponsorResults : sponsorshipResults;
+  };
+
+  const hasResults = () => {
+    return getCurrentResults().length > 0;
+  };
+
   return (
-    <main className="flex flex-col w-full max-w-7xl mx-auto">
+    <main className="min-h-screen flex flex-col w-full max-w-7xl mx-auto">
       <div
         id="header"
         className="border-b bg-background px-5 md:px-10 sticky top-0 z-10 text-center flex flex-col gap-2 py-5 md:py-10 w-full"
@@ -95,7 +137,11 @@ export default function Home() {
             <div className="flex flex-row gap-2.5 w-full">
               <Input
                 type="text"
-                placeholder="Enter industry or category (e.g., tech, fitness, gaming)"
+                placeholder={
+                  searchType === "category"
+                    ? "tech, fitness, gaming"
+                    : "Bose or Nike"
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -104,8 +150,8 @@ export default function Home() {
               />
               <span className="hidden md:block">
                 <Select
-                  value={selectValue}
-                  onValueChange={setSelectValue}
+                  value={searchType}
+                  onValueChange={setSearchType}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -118,16 +164,16 @@ export default function Home() {
               </span>
               <Button
                 onClick={() => handleSearch(searchQuery)}
-                disabled={isLoading}
+                disabled={isSearching}
                 className="px-6"
               >
-                {isLoading ? "Searching..." : "Search"}
+                {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
             <span className="flex md:hidden">
               <Select
-                value={selectValue}
-                onValueChange={setSelectValue}
+                value={searchType}
+                onValueChange={setSearchType}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a category" />
@@ -154,25 +200,24 @@ export default function Home() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
           {/* if no results, then show You've reached the end otherwise, click load more results*/}
-          {searchResults.length > 0
-            ? searchResults.map((sponsor, index) => (
-                <div key={index}>
+          {hasResults() &&
+            getCurrentResults().map((result, index) => (
+              <div key={index}>
+                {searchType === "category" ? (
                   <SponsorResultCard
-                    sponsor={sponsor}
+                    sponsor={result as Sponsor}
                     searchQuery={searchQuery}
                     cursor={cursor}
                   />
-                </div>
-              ))
-            : videoExamples.video_examples.map((videoUrl, index) => (
-                <SponsorshipCard
-                  key={index}
-                  videoUrl={videoUrl}
-                  title={`Video ${index + 1}`}
-                >
-                  <p>sponsorship description</p>
-                </SponsorshipCard>
-              ))}
+                ) : (
+                  <SponsorshipResultCard
+                    sponsorship={result as Sponsorship}
+                    searchQuery={searchQuery}
+                    cursor={cursor}
+                  />
+                )}
+              </div>
+            ))}
         </div>
         {cursor ? (
           <Button
@@ -186,7 +231,7 @@ export default function Home() {
           </Button>
         ) : (
           <p className="text-center text-base text-gray-500">
-            You've reached the end
+            {hasResults() ? "You've reached the end" : "Nothing yet"}
           </p>
         )}
       </div>

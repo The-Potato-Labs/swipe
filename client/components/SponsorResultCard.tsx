@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import SponsorshipCard from "@/components/SponsorshipCard";
-import SponsorshipMetadata from "@/components/SponsorshipMetadata";
+import SponsorMetadata from "@/components/SponsorMetadata";
 import { Sponsor } from "@/lib/models/sponsors";
 
 interface SponsorResultCardProps {
@@ -19,7 +19,7 @@ const SponsorResultCard = memo(function SponsorResultCard({
       videoUrl={sponsor.most_recent_ad.content_url}
       title={sponsor.partner_name}
     >
-      <SponsorshipMetadata sponsor={sponsor} />
+      <SponsorMetadata sponsor={sponsor} />
     </SponsorshipCard>
   );
 });
