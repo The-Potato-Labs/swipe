@@ -26,15 +26,15 @@ const SponsorshipSheet: React.FC<SponsorshipSheetProps> = ({
   return (
     <Sheet>
       <SheetTrigger>{children}</SheetTrigger>
-      <SheetContent>
+      <SheetContent className="gap-2">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription className="mt-4">
+          <SheetDescription className="mt-4 px-0">
             <span className="aspect-video w-full">
               <iframe
                 src={videoUrl}
                 title={title}
-                className="w-full h-full rounded-lg"
+                className="w-full h-full rounded-md"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
