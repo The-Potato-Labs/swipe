@@ -49,14 +49,6 @@ const VideoCard: React.FC<VideoCardProps> = ({
     <Card className={`py-5 gap-4 ${className}`}>
       <CardHeader>
         <CardTitle className="mt-2">{title}</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-          >
-            <HeartIcon className="w-4 h-4" />
-          </Button>
-        </CardAction>
       </CardHeader>
       {/* video player */}
       <CardContent className="p-0">
