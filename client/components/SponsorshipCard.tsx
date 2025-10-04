@@ -6,18 +6,20 @@ import {
   CardHeader,
   CardTitle,
   CardAction,
+  CardFooter,
 } from "@/components/ui/card";
 import { HeartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SponsorshipSheet from "@/components/SponsorshipSheet";
 
-interface VideoCardProps {
+interface SponsorshipCardProps {
   videoUrl: string;
   title: string;
   description: string;
   className?: string;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({
+const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   videoUrl,
   title,
   description,
@@ -44,11 +46,12 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const embedUrl = getEmbedUrl(videoUrl);
+  const relevance = 0.95;
 
   return (
-    <Card className={`py-5 gap-4 ${className}`}>
-      <CardHeader>
-        <CardTitle className="mt-2">{title}</CardTitle>
+    <Card className={`py-2.5 gap-3 ${className}`}>
+      <CardHeader className="pl-4 pr-2 py-0">
+        <CardTitle className="mt-3">{title}</CardTitle>
         <CardAction>
           <Button
             variant="ghost"
@@ -72,16 +75,32 @@ const VideoCard: React.FC<VideoCardProps> = ({
       </CardContent>
 
       {/* video info */}
-      <CardContent>
-        <CardTitle className="text-base 2xl:text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          {title}
-        </CardTitle>
-        <CardDescription>{description}</CardDescription>
-        {/* relevance / how good of a match it is */}
-        {/* reason */}
+      <CardContent className="py-2 px-4">
+        {/* reason why it's a match */}
+        {/* */}
+        <div className="flex flex-col gap-2">
+          <CardDescription className="font-semibold text-white">
+            Relevance: {relevance}
+          </CardDescription>
+          <CardDescription>{description}</CardDescription>
+        </div>
       </CardContent>
+      <CardFooter className="pb-3 px-4">
+        <SponsorshipSheet
+          videoUrl={videoUrl}
+          title={title}
+          description={description}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+          >
+            View Details
+          </Button>
+        </SponsorshipSheet>
+      </CardFooter>
     </Card>
   );
 };
 
-export default VideoCard;
+export default SponsorshipCard;
