@@ -8,69 +8,98 @@ import {
   CardAction,
   CardFooter,
 } from "@/components/ui/card";
-import { HeartIcon } from "lucide-react";
+import { HeartIcon, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SponsorshipSheet from "@/components/SponsorshipSheet";
+import { convertYoutubeUrlToEmbedUrl } from "@/lib/utils";
+import { useState } from "react";
 
 interface SponsorshipCardProps {
   videoUrl: string;
   title: string;
-  description: string;
+  children: React.ReactNode;
   className?: string;
 }
 
 const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   videoUrl,
   title,
-  description,
+  children,
   className = "",
 }) => {
+  const [embedError, setEmbedError] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
+
   // Convert YouTube URL to embed format
-  const getEmbedUrl = (url: string): string => {
-    // Handle different YouTube URL formats
+  const embedUrl = convertYoutubeUrlToEmbedUrl(videoUrl);
+
+  // Extract video ID for thumbnail
+  const getVideoId = (url: string): string | null => {
     const youtubeRegex =
       /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(youtubeRegex);
-
-    if (match) {
-      return `https://www.youtube.com/embed/${match[1]}`;
-    }
-
-    // If it's already an embed URL, return as is
-    if (url.includes("youtube.com/embed/")) {
-      return url;
-    }
-
-    // For other video URLs, return the original URL
-    return url;
+    return match ? match[1] : null;
   };
 
-  const embedUrl = getEmbedUrl(videoUrl);
-  const relevance = 0.95;
+  const videoId = getVideoId(videoUrl);
+  const thumbnailUrl = videoId
+    ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+    : null;
 
   return (
-    <Card className={`py-2.5 gap-3 ${className}`}>
+    <Card className={`h-full rounded-md py-2.5 gap-3 ${className}`}>
       <CardHeader className="pl-4 pr-2 py-0">
         <CardTitle className="mt-3">{title}</CardTitle>
-        <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-          >
-            <HeartIcon className="w-4 h-4" />
-          </Button>
-        </CardAction>
       </CardHeader>
       {/* video player */}
       <CardContent className="p-0">
         <div className="relative w-full h-0 pb-[56.25%] overflow-hidden">
-          <iframe
-            src={embedUrl}
-            title={title}
-            className="absolute top-0 left-0 w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          {!embedError && showEmbed ? (
+            <iframe
+              src={embedUrl}
+              title={title}
+              className="absolute top-0 left-0 w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              onError={() => setEmbedError(true)}
+            />
+          ) : (
+            <div className="absolute top-0 left-0 w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              {thumbnailUrl ? (
+                <div
+                  className="relative w-full h-full group cursor-pointer"
+                  onClick={() => setShowEmbed(true)}
+                >
+                  <img
+                    src={thumbnailUrl}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="bg-red-600 rounded-full p-4">
+                      <Play className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center p-4">
+                  <Play className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">Click to play video</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => window.open(videoUrl, "_blank")}
+                  >
+                    Open in YouTube
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
 
@@ -79,24 +108,19 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
         {/* reason why it's a match */}
         {/* */}
         <div className="flex flex-col gap-2">
-          <CardDescription className="font-semibold text-white">
-            Relevance: {relevance}
-          </CardDescription>
-          <CardDescription>{description}</CardDescription>
+          <CardDescription>{children}</CardDescription>
         </div>
       </CardContent>
       <CardFooter className="pb-3 px-4">
         <SponsorshipSheet
-          videoUrl={videoUrl}
+          videoUrl={embedUrl}
           title={title}
-          description={description}
+          sheetChildren={children}
         >
-          <Button
-            variant="outline"
-            size="sm"
-          >
-            View Details
-          </Button>
+          <span className="flex items-center gap-2 text-sm border px-2 py-1.5 rounded-sm hover:bg-white/10">
+            <Sparkles className="w-4 h-4 fill-slate-400 stroke-transparent" />
+            Get Insights
+          </span>
         </SponsorshipSheet>
       </CardFooter>
     </Card>
