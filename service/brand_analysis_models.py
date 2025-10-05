@@ -15,6 +15,7 @@ while this Pydantic schema is used for prompt guidance and local validation.
 from __future__ import annotations
 
 from typing import List, Literal, Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -87,3 +88,27 @@ class BrandAnalysisOutput(BaseModel):
     chapters: List[Chapter]
     brand_mentions: List[BrandMention]
 
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    details: Optional[dict] = None
+
+
+class BrandAnalysisMeta(BaseModel):
+    provider: str = Field(default="twelvelabs")
+    brand: str
+    video_id: str
+    index_id: Optional[str] = None
+    source_url: Optional[str] = None
+    created_at: datetime
+    elapsed_ms: int
+    schema_version: str = Field(default="brand_analysis.v1")
+    schema_url: Optional[str] = None
+    trace_id: Optional[str] = None
+
+
+class BrandAnalysisResult(BaseModel):
+    data: BrandAnalysisOutput
+    meta: BrandAnalysisMeta
+    errors: List[ErrorDetail] = Field(default_factory=list)

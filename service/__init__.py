@@ -8,4 +8,6 @@ __all__ = [
     "twelvelabs_summary",
     "yt_rapidapi_dl",
     "cloudglue_summary",
+    "twelvelabs_analyze_brand",
+    "api",
 ]
