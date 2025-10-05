@@ -33,9 +33,10 @@ Environment
   - `CLOUDGLUE_BASE_URL` (optional; default `https://api.cloudglue.dev`)
   - `CLOUDGLUE_COLLECTION_ID` (optional; recommended)
   - `CLOUDGLUE_COLLECTION_NAME` (optional; default: `swipe`)
- - `YT_RAPIDAPI_URL` (optional; RapidAPI endpoint that returns streaming data with `formats`/`adaptiveFormats`)
- - `YT_RAPIDAPI_HOST` (optional; RapidAPI host header)
+- `YT_RAPIDAPI_URL` (optional; RapidAPI endpoint that returns streaming data with `formats`/`adaptiveFormats`)
+- `YT_RAPIDAPI_HOST` (optional; RapidAPI host header)
  - `YT_RAPIDAPI_KEY` (optional; RapidAPI key header)
+ - `YT_DLP_COOKIES_FROM_BROWSER` (optional; browser name for yt-dlp to read cookies, e.g. `chrome`, `brave`, `edge`, `firefox`)
 
 CLI Usage
 1) Export your API key:

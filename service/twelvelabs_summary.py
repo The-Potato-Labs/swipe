@@ -379,12 +379,16 @@ def _resolve_youtube_direct_url(url: str) -> Optional[str]:
     except Exception:
         return None
 
-    ydl_opts = {
+    ydl_opts: Dict[str, Any] = {
         "quiet": True,
         "skip_download": True,
         "noplaylist": True,
         "format": "best[ext=mp4]/best",
     }
+    # Optional cookies from a local browser (e.g., "chrome", "brave", "edge", "firefox")
+    browser = os.getenv("YT_DLP_COOKIES_FROM_BROWSER")
+    if browser:
+        ydl_opts["cookiesfrombrowser"] = browser
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -508,12 +512,16 @@ def _download_youtube_to_temp(url: str) -> Optional[str]:
     except Exception:
         return None
 
-    ydl_opts = {
+    ydl_opts: Dict[str, Any] = {
         "quiet": True,
         "format": "mp4/best",
         "noplaylist": True,
         "outtmpl": os.path.join(tempfile.gettempdir(), "twelvelabs-%(id)s.%(ext)s"),
     }
+    # Optional cookies from a local browser (e.g., "chrome", "brave", "edge", "firefox")
+    browser = os.getenv("YT_DLP_COOKIES_FROM_BROWSER")
+    if browser:
+        ydl_opts["cookiesfrombrowser"] = browser
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
