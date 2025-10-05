@@ -16,8 +16,8 @@ export default function SponsorshipMetadata({
     sponsorship;
 
   return (
-    <div className="flex flex-col gap-2 text-slate-300">
-      <p className="flex items-center gap-2">
+    <div className="flex flex-wrap gap-4 text-slate-300">
+      <div className="flex items-center gap-2">
         <UserRound className="w-4 h-4 text-slate-400" />
         <Link
           href={publication_url}
@@ -26,23 +26,19 @@ export default function SponsorshipMetadata({
         >
           <span className="text-white">{publication_name}</span>
         </Link>
-      </p>
-      <p className="flex items-center gap-2">
+      </div>
+      <div className="flex items-center gap-2">
         <Calendar className="w-4 h-4 text-slate-400" />
-        {published_date ? new Date(published_date).toLocaleDateString() : "--"}
-      </p>
-      <p className="flex items-center gap-2">
+        <span>
+          {published_date
+            ? new Date(published_date).toLocaleDateString()
+            : "--"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
         <Tag className="w-4 h-4 text-slate-400" />
-        {toTitleCase(formatSponsorType(sponsor_type))}
-      </p>
-      {sponsorship.evidence && (
-        <p className="flex items-center gap-2">
-          <Locate className="w-4 h-4 text-slate-400" />
-          <span className="title-case">
-            {toTitleCase(formatEvidenceSource(sponsorship.evidence.source))}
-          </span>
-        </p>
-      )}
+        <span>{toTitleCase(formatSponsorType(sponsor_type))}</span>
+      </div>
     </div>
   );
 }
