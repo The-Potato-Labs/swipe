@@ -5,3 +5,5 @@ requests
 pydantic>=2
 fastapi>=0.110
 uvicorn[standard]
+redis>=5
+upstash-redis>=1.0.0

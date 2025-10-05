@@ -25,6 +25,9 @@ Environment
 - `TWELVE_LABS_LANGUAGE` (optional; default: `en`)
 - `TWELVE_LABS_ORGANIZATION_ID` (optional; only if you belong to multiple orgs)
 - `TWELVE_LABS_ALLOW_YT_DOWNLOAD` (optional; default: `true` — if a YouTube URL cannot be ingested by URL, download locally via `yt_dlp` and upload as a file)
+ - Redis cache (YouTube → video_id mapping; analysis cache):
+   - Upstash (recommended): set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to enable serverless REST Redis.
+   - Or standard Redis: set `REDIS_URL` (e.g., `redis://:password@host:port/0`). If neither is present or unreachable, caching is disabled.
 - Cloudglue:
   - `CLOUDGLUE_API_KEY` (required to use Cloudglue provider)
   - `CLOUDGLUE_BASE_URL` (optional; default `https://api.cloudglue.dev`)
