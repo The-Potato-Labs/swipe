@@ -45,3 +45,11 @@ export function toTitleCase(text: string | undefined | null): string {
   if (!text) return "";
   return text.replace(/\b\w/g, (l) => l.toUpperCase());
 }
+
+// format evidence source - return "video" if source is "transcript", otherwise return the source
+export function formatEvidenceSource(
+  source: string | undefined | null
+): string {
+  if (!source) return "";
+  return source.toLowerCase() === "transcript" ? "video" : source;
+}

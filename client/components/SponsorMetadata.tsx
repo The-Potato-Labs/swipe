@@ -1,18 +1,26 @@
 "use client";
 
-import { memo } from "react";
 import Link from "next/link";
-import { UserRound, Tag, Calendar } from "lucide-react";
+import { UserRound, Tag, Calendar, Locate } from "lucide-react";
 import { Sponsor } from "@/lib/models/sponsors";
-import { formatTextToTitleCase } from "@/lib/utils";
+import {
+  formatEvidenceSource,
+  formatTextToTitleCase,
+  toTitleCase,
+} from "@/lib/utils";
 
 interface SponsorMetadataProps {
   sponsor: Sponsor;
 }
 
 export default function SponsorMetadata({ sponsor }: SponsorMetadataProps) {
-  const { publication_name, publication_url, sponsor_type, published_date } =
-    sponsor.most_recent_ad;
+  const {
+    publication_name,
+    publication_url,
+    sponsor_type,
+    published_date,
+    evidence,
+  } = sponsor.most_recent_ad;
 
   return (
     <div className="flex flex-col gap-2 text-slate-300">
@@ -27,13 +35,19 @@ export default function SponsorMetadata({ sponsor }: SponsorMetadataProps) {
         </Link>
       </p>
       <p className="flex items-center gap-2">
-        <Tag className="w-4 h-4 text-slate-400" />
-        {formatTextToTitleCase(sponsor_type)}
-      </p>
-      <p className="flex items-center gap-2">
         <Calendar className="w-4 h-4 text-slate-400" />
         {published_date ? new Date(published_date).toLocaleDateString() : "N/A"}
       </p>
+      <p className="flex items-center gap-2">
+        <Tag className="w-4 h-4 text-slate-400" />
+        {formatTextToTitleCase(sponsor_type)}
+      </p>
+      {evidence && (
+        <p className="flex items-center gap-2">
+          <Locate className="w-4 h-4 text-slate-400" />
+          {toTitleCase(formatEvidenceSource(evidence.source))}
+        </p>
+      )}
     </div>
   );
 }

@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { UserRound, Tag, Calendar, Locate } from "lucide-react";
 import { Sponsorship } from "@/lib/models/sponsorship";
-import { formatTextToTitleCase, toTitleCase } from "@/lib/utils";
+import {
+  formatTextToTitleCase,
+  toTitleCase,
+  formatEvidenceSource,
+} from "@/lib/utils";
 
 interface SponsorshipMetadataProps {
   sponsorship: Sponsorship;
@@ -28,18 +32,18 @@ export default function SponsorshipMetadata({
         </Link>
       </p>
       <p className="flex items-center gap-2">
-        <Tag className="w-4 h-4 text-slate-400" />
-        {formatTextToTitleCase(sponsor_type)}
-      </p>
-      <p className="flex items-center gap-2">
         <Calendar className="w-4 h-4 text-slate-400" />
         {published_date ? new Date(published_date).toLocaleDateString() : "--"}
+      </p>
+      <p className="flex items-center gap-2">
+        <Tag className="w-4 h-4 text-slate-400" />
+        {formatTextToTitleCase(sponsor_type)}
       </p>
       {sponsorship.evidence && (
         <p className="flex items-center gap-2">
           <Locate className="w-4 h-4 text-slate-400" />
           <span className="title-case">
-            {toTitleCase(sponsorship.evidence.source)}
+            {toTitleCase(formatEvidenceSource(sponsorship.evidence.source))}
           </span>
         </p>
       )}
