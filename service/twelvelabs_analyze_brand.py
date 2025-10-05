@@ -194,6 +194,9 @@ class TwelveLabsAnalyzeConfig:
     # optional defaults for generation
     temperature: float = 0.2
     max_tokens: Optional[int] = None  # let the API default unless specified
+    # Redis cache
+    redis_url: Optional[str] = None
+    redis_prefix: str = "ba:yt:"
 
 
 class TwelveLabsBrandAnalyzer:
@@ -206,13 +209,21 @@ class TwelveLabsBrandAnalyzer:
         if org_id:
             headers = {"X-Organization-Id": org_id}
         self._client = TwelveLabs(api_key=self.config.api_key, headers=headers)
+        # Optional Redis client
+        self._redis = _init_redis(self.config.redis_url)
 
     @classmethod
     def from_env(cls) -> "TwelveLabsBrandAnalyzer":
         # Keep consistent with existing modules that use dotenv
         from dotenv import load_dotenv
-
+        # Load default .env (cwd) and also service/.env if present to be robust
         load_dotenv()
+        try:
+            here_env = os.path.join(os.path.dirname(__file__), ".env")
+            if os.path.exists(here_env):
+                load_dotenv(here_env, override=False)
+        except Exception:
+            pass
         api_key = os.getenv("TWELVE_LABS_API_KEY")
         if not api_key:
             raise ValueError("Missing TWELVE_LABS_API_KEY. Set it in your environment.")
@@ -225,6 +236,7 @@ class TwelveLabsBrandAnalyzer:
             allow_youtube_download_fallback=(
                 os.getenv("TWELVE_LABS_ALLOW_YT_DOWNLOAD", "true").lower() != "false"
             ),
+            redis_url=os.getenv("REDIS_URL") or None,
         )
         return cls(cfg)
 
@@ -357,21 +369,70 @@ class TwelveLabsBrandAnalyzer:
         Otherwise, ingest the provided URL (YouTube or direct), wait for ready,
         then analyze using the brand-focused prompt.
         """
+        # Support caching even if a YouTube link is provided via `video_url`.
+        yt_id: Optional[str] = None
+        if youtube_url:
+            yt_id = _extract_youtube_id(youtube_url)
+        elif video_url and _is_youtube_url(video_url):
+            yt_id = _extract_youtube_id(video_url)
+        # 1) If YouTube and cached analysis exists for (yt_id, brand), return it
+        if yt_id and self._redis:
+            key = _redis_key_analysis(self.config.redis_prefix, yt_id, brand)
+            cached = _redis_get_json(self._redis, key)
+            if cached:
+                try:
+                    print(f"[cache] hit analysis for yt:{yt_id} brand:{brand}")
+                    return BrandAnalysisResult.model_validate(cached)
+                except Exception:
+                    pass  # corrupt cache; continue
+
+        # 2) Resolve or ingest video_id
         if not video_id:
             url = youtube_url or video_url
             if not url:
                 raise ValueError("Provide either video_id or youtube_url/video_url")
             index_id = self._ensure_index()
-            video_id = self._ingest_from_url(index_id, url, metadata=metadata)
-            self._wait_for_indexing_ready(index_id, video_id)
 
-        return self.analyze_video(
+            # Reuse mapping ytid -> twelvelabs video_id if present
+            if yt_id and self._redis:
+                map_key = _redis_key_video_map(self.config.redis_prefix, yt_id)
+                mapped = _redis_get_text(self._redis, map_key)
+                if mapped:
+                    print(f"[cache] hit mapping yt:{yt_id} -> video_id:{mapped}")
+                    video_id = mapped
+
+            if not video_id:
+                print(f"[ingest] starting ingest for url: {url}")
+                video_id = self._ingest_from_url(index_id, url, metadata=metadata)
+                self._wait_for_indexing_ready(index_id, video_id)
+                print(f"[ingest] indexing ready for video_id: {video_id}")
+                # Store mapping
+                if yt_id and self._redis:
+                    map_key = _redis_key_video_map(self.config.redis_prefix, yt_id)
+                    ok = _redis_set_text(self._redis, map_key, video_id)
+                    print(
+                        f"[cache] {'stored' if ok else 'FAILED to store'} mapping yt:{yt_id} -> video_id:{video_id}"
+                    )
+
+        # 3) Analyze
+        print(f"[analyze] about to call analyze for video_id:{video_id} brand:{brand}")
+        result = self.analyze_video(
             video_id=video_id,
             brand=brand,
             source_url=youtube_url or video_url,
             temperature=temperature,
             max_tokens=max_tokens,
         )
+
+        # 4) Cache analysis envelope
+        if yt_id and self._redis:
+            key = _redis_key_analysis(self.config.redis_prefix, yt_id, brand)
+            ok = _redis_set_json(self._redis, key, result.model_dump(mode="json"))
+            print(
+                f"[cache] {'stored' if ok else 'FAILED to store'} analysis for yt:{yt_id} brand:{brand}"
+            )
+
+        return result
 
     # ---- Index helpers ----------------------------------------------------
     def _ensure_index(self) -> str:
@@ -432,13 +493,17 @@ class TwelveLabsBrandAnalyzer:
                 direct = resolve_youtube_direct_url(url)
             if direct:
                 video_url = direct
+                print(f"[ingest] resolved direct YouTube URL")
 
         try:
+            print(f"[ingest] creating tasks.create with video_url")
             task = self._client.tasks.create(
                 index_id=index_id,
                 video_url=video_url,
                 user_metadata=(json.dumps(metadata, ensure_ascii=False) if metadata else None),
             )
+            task_id = getattr(task, "id", None) or getattr(task, "_id", None)
+            print(f"[ingest] upload by URL accepted; task_id:{task_id}")
         except Exception as e:
             # Fallback to local download for YouTube
             if _is_youtube_url(url) and self.config.allow_youtube_download_fallback:
@@ -448,6 +513,7 @@ class TwelveLabsBrandAnalyzer:
                         "Direct YouTube URL not accepted and yt_dlp fallback failed."
                     ) from e
                 try:
+                    print(f"[ingest] uploading local file to Twelve Labs: {temp_path}")
                     with open(temp_path, "rb") as fh:
                         task = self._client.tasks.create(
                             index_id=index_id,
@@ -456,9 +522,12 @@ class TwelveLabsBrandAnalyzer:
                                 json.dumps(metadata, ensure_ascii=False) if metadata else None
                             ),
                         )
+                    task_id = getattr(task, "id", None) or getattr(task, "_id", None)
+                    print(f"[ingest] upload completed; task_id:{task_id}")
                 finally:
                     try:
                         os.remove(temp_path)
+                        print(f"[ingest] cleaned up temp file")
                     except Exception:
                         pass
             else:
@@ -466,12 +535,14 @@ class TwelveLabsBrandAnalyzer:
         task_id = getattr(task, "id", None) or getattr(task, "_id", None)
         if not task_id:
             raise RuntimeError("Task creation response missing id.")
+        print(f"[index] waiting for task {task_id} to complete")
         done = self._wait_for_task(task_id)
         if getattr(done, "status", None) != "ready":
             raise RuntimeError(f"Indexing failed: status={getattr(done, 'status', None)}")
         video_id = getattr(done, "video_id", None)
         if not video_id:
             raise RuntimeError("Indexing completed but video_id missing in response.")
+        print(f"[index] task ready; video_id:{video_id}")
         return video_id
 
     def _wait_for_task(self, task_id: str):
@@ -553,6 +624,44 @@ def _is_youtube_url(url: str) -> bool:
         return False
 
 
+def _extract_youtube_id(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        host = (parsed.netloc or "").lower()
+        path = parsed.path or ""
+        # youtu.be/<id>
+        if host.endswith("youtu.be"):
+            vid = path.lstrip("/").split("/")[0]
+            return vid or None
+        if host.endswith("youtube.com"):
+            # Handle common path-based forms first (shorts, embed, live)
+            # - /shorts/<id>
+            # - /embed/<id>
+            # - /live/<id>
+            # - /watch?v=<id>
+            segments = [s for s in path.split("/") if s]
+            if segments:
+                head = segments[0]
+                if head in {"shorts", "embed", "live"} and len(segments) >= 2:
+                    vid = segments[1]
+                    # strip any trailing extra segmenting or .
+                    vid = vid.split("?")[0].split("&")[0]
+                    return vid or None
+            # Fallback to query param v
+            query = parsed.query or ""
+            for part in query.split("&"):
+                if not part:
+                    continue
+                k, _, v = part.partition("=")
+                if k == "v" and v:
+                    return v
+    except Exception:
+        return None
+    return None
+
+
 def _download_youtube_to_temp(url: str) -> Optional[str]:
     """
     Download a YouTube video to a temporary file using yt_dlp and return its path.
@@ -576,7 +685,185 @@ def _download_youtube_to_temp(url: str) -> Optional[str]:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if isinstance(info, dict):
-                return ydl.prepare_filename(info)
+                path = ydl.prepare_filename(info)
+                try:
+                    size = os.path.getsize(path)
+                except Exception:
+                    size = -1
+                print(f"[download] completed YouTube download: {path} ({size} bytes)")
+                return path
     except Exception:
         return None
     return None
+
+
+# ---- Redis helpers ---------------------------------------------------------
+def _init_redis(redis_url: Optional[str]):
+    """
+    Initialize a Redis-like client.
+
+    Priority:
+    1) Upstash SDK (upstash-redis) via UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+    2) Upstash REST fallback (requests)
+    3) redis-py from REDIS_URL (or provided redis_url) or localhost fallback
+    Returns an object supporting `.get(key)` and `.set(key, value)` with
+    decoded string responses, or None if no backend is reachable.
+    """
+    # 1) Upstash SDK (preferred)
+    rest_url = os.getenv("UPSTASH_REDIS_REST_URL")
+    rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+    if rest_url and rest_token:
+        try:
+            from upstash_redis import Redis as _UpstashRedis  # type: ignore
+            client = _UpstashRedis(url=rest_url, token=rest_token)
+            # liveness check: real round-trip
+            try:
+                probe_key = "__ba_probe__"
+                client.set(probe_key, "1")
+                if client.get(probe_key) == "1":
+                    print("[redis] using Upstash SDK client")
+                    return client
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    # 2) Upstash REST (without SDK)
+    if rest_url and rest_token:
+        try:
+            import requests  # noqa: F401
+
+            class _UpstashRESTClient:
+                def __init__(self, base_url: str, token: str):
+                    self._url = base_url.rstrip("/")
+                    self._token = token
+
+                def _cmd(self, *parts):
+                    try:
+                        import requests
+
+                        resp = requests.post(
+                            f"{self._url}/pipeline",
+                            headers={
+                                "Authorization": f"Bearer {self._token}",
+                                "Content-Type": "application/json",
+                            },
+                            json={"commands": [list(parts)]},
+                            timeout=3.0,
+                        )
+                        if resp.status_code != 200:
+                            return None
+                        data = resp.json()
+                        if isinstance(data, list) and data:
+                            item = data[0]
+                            if isinstance(item, dict):
+                                # {'result': value} or {'error': '...'}
+                                if "error" in item:
+                                    return None
+                                return item.get("result")
+                        return None
+                    except Exception:
+                        return None
+
+                def get(self, key: str):
+                    res = self._cmd("GET", key)
+                    return res if isinstance(res, str) else None
+
+                def set(self, key: str, value: str):
+                    res = self._cmd("SET", key, value)
+                    return (isinstance(res, str) and res.upper() == "OK")
+
+            client = _UpstashRESTClient(rest_url, rest_token)
+            # Quick liveness check with round-trip
+            probe_key = "__ba_probe__"
+            if client.set(probe_key, "1") and client.get(probe_key) == "1":
+                print("[redis] using Upstash REST client")
+                return client
+        except Exception:
+            pass
+
+    # 3) redis-py
+    if not redis_url:
+        redis_url = os.getenv("REDIS_URL")
+    try:
+        import redis  # type: ignore
+
+        kwargs = dict(
+            decode_responses=True,
+            socket_connect_timeout=2.0,
+            socket_timeout=2.0,
+            health_check_interval=0,
+            retry_on_timeout=False,
+        )
+        # Upstash via redis protocol requires TLS (rediss://)
+        if redis_url and "upstash.io" in redis_url and redis_url.startswith("redis://"):
+            redis_url = "rediss://" + redis_url[len("redis://"):]
+        client = (
+            redis.Redis.from_url(redis_url, **kwargs)
+            if redis_url
+            else redis.Redis(host="127.0.0.1", port=6379, db=0, **kwargs)
+        )
+        try:
+            client.ping()
+            print("[redis] using redis-py client")
+        except Exception:
+            return None
+        return client
+    except Exception:
+        return None
+
+
+def _brand_key(brand: str) -> str:
+    import re
+
+    return re.sub(r"[^a-z0-9]+", "_", brand.lower()).strip("_")
+
+
+def _redis_key_video_map(prefix: str, yt_id: str) -> str:
+    return f"{prefix}{yt_id}:tl_video_id"
+
+
+def _redis_key_analysis(prefix: str, yt_id: str, brand: str) -> str:
+    return f"{prefix}{yt_id}:analysis:{_brand_key(brand)}"
+
+
+def _redis_get_text(r, key: str) -> Optional[str]:
+    try:
+        return r.get(key)
+    except Exception:
+        return None
+
+
+def _redis_set_text(r, key: str, value: str) -> bool:
+    try:
+        res = r.set(key, value)
+        if isinstance(res, bool):
+            return res
+        if isinstance(res, str):
+            return res.upper() == "OK"
+        return True if res is not None else False
+    except Exception:
+        return False
+
+
+def _redis_get_json(r, key: str) -> Optional[Dict[str, Any]]:
+    try:
+        s = r.get(key)
+        if not s:
+            return None
+        return json.loads(s)
+    except Exception:
+        return None
+
+
+def _redis_set_json(r, key: str, value: Dict[str, Any]) -> bool:
+    try:
+        s = json.dumps(value, ensure_ascii=False)
+        res = r.set(key, s)
+        if isinstance(res, bool):
+            return res
+        if isinstance(res, str):
+            return res.upper() == "OK"
+        return True if res is not None else False
+    except Exception:
+        return False
