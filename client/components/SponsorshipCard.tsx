@@ -32,7 +32,7 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   className = "",
 }) => {
   const [embedError, setEmbedError] = useState(false);
-  const [showEmbed, setShowEmbed] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(true);
 
   // Convert YouTube URL to embed format
   const embedUrl = convertYoutubeUrlToEmbedUrl(videoUrl, offset_seconds);
