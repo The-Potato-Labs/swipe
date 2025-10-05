@@ -17,10 +17,11 @@ Run (dev)
 Endpoints
 - POST /summarize
   - Body JSON:
-    { "youtube_url": "https://www.youtube.com/watch?v=...", "style": "concise", "language": "en", "allow_download": true }
-    or { "video_url": "https://example.com/video.mp4" }
+    { "youtube_url": "https://www.youtube.com/watch?v=...", "style": "concise", "language": "en", "allow_download": true, "provider": "twelvelabs" }
+    or { "video_url": "https://example.com/video.mp4", "provider": "cloudglue" }
   - Response JSON: { "video_id": str, "summary": str, "raw": object }
 
 Notes
 - If RapidAPI/metadata cannot produce a directly-fetchable URL, and allow_download is true (or env allows it), the service downloads via yt-dlp and uploads the file to Twelve Labs.
+- Use `provider` to switch between Twelve Labs (default) and Cloudglue. You can also set SUMMARY_PROVIDER env to `cloudglue` to change default.
 - To strictly avoid local downloads, set allow_download=false on the request or TWELVE_LABS_ALLOW_YT_DOWNLOAD=false in env.

@@ -6,6 +6,7 @@ Overview
 
 Files
 - `service/twelvelabs_summary.py` — core service class `TwelveLabsSummarizer`.
+- `service/cloudglue_summary.py` — Cloudglue integration `CloudglueSummarizer`.
 - `service/cli.py` — simple CLI wrapper around the service.
 
 Prerequisites
@@ -24,6 +25,11 @@ Environment
 - `TWELVE_LABS_LANGUAGE` (optional; default: `en`)
 - `TWELVE_LABS_ORGANIZATION_ID` (optional; only if you belong to multiple orgs)
 - `TWELVE_LABS_ALLOW_YT_DOWNLOAD` (optional; default: `true` — if a YouTube URL cannot be ingested by URL, download locally via `yt_dlp` and upload as a file)
+- Cloudglue:
+  - `CLOUDGLUE_API_KEY` (required to use Cloudglue provider)
+  - `CLOUDGLUE_BASE_URL` (optional; default `https://api.cloudglue.dev`)
+  - `CLOUDGLUE_COLLECTION_ID` (optional; recommended)
+  - `CLOUDGLUE_COLLECTION_NAME` (optional; default: `swipe`)
  - `YT_RAPIDAPI_URL` (optional; RapidAPI endpoint that returns streaming data with `formats`/`adaptiveFormats`)
  - `YT_RAPIDAPI_HOST` (optional; RapidAPI host header)
  - `YT_RAPIDAPI_KEY` (optional; RapidAPI key header)
@@ -40,6 +46,7 @@ CLI Usage
 Programmatic Usage
 ```python
 from service.twelvelabs_summary import TwelveLabsSummarizer
+from service.cloudglue_summary import CloudglueSummarizer
 
 summarizer = TwelveLabsSummarizer.from_env()
 result = summarizer.summarize_youtube(
@@ -47,6 +54,14 @@ result = summarizer.summarize_youtube(
     style="concise",
 )
 print(result["summary"])  # Full payload in result["raw"]
+
+cg = CloudglueSummarizer.from_env()
+res2 = cg.summarize_url(
+    media_url="https://www.youtube.com/watch?v=...",
+    style="concise",
+    youtube=True,
+)
+print(res2["summary"])  # raw in res2["raw"]
 ```
 
 Notes
