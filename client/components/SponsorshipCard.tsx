@@ -11,19 +11,23 @@ import {
 import { HeartIcon, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SponsorshipSheet from "@/components/SponsorshipSheet";
-import { convertYoutubeUrlToEmbedUrl } from "@/lib/utils";
+import { convertYoutubeUrlToEmbedUrl, getYoutubeThumbnail } from "@/lib/utils";
 import { useState } from "react";
 
 interface SponsorshipCardProps {
   videoUrl: string;
+  offset_seconds?: number;
   title: string;
+  showCardTitle?: boolean;
   children: React.ReactNode;
   className?: string;
 }
 
 const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   videoUrl,
+  offset_seconds,
   title,
+  showCardTitle = true,
   children,
   className = "",
 }) => {
@@ -31,26 +35,22 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   const [showEmbed, setShowEmbed] = useState(false);
 
   // Convert YouTube URL to embed format
-  const embedUrl = convertYoutubeUrlToEmbedUrl(videoUrl);
-
-  // Extract video ID for thumbnail
-  const getVideoId = (url: string): string | null => {
-    const youtubeRegex =
-      /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(youtubeRegex);
-    return match ? match[1] : null;
-  };
-
-  const videoId = getVideoId(videoUrl);
-  const thumbnailUrl = videoId
-    ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-    : null;
+  const embedUrl = convertYoutubeUrlToEmbedUrl(videoUrl, offset_seconds);
+  console.log("embed url : ", embedUrl);
+  // Get YouTube thumbnail URL
+  const thumbnailUrl = getYoutubeThumbnail(videoUrl);
 
   return (
-    <Card className={`h-full rounded-md py-2.5 gap-3 ${className}`}>
-      <CardHeader className="pl-4 pr-2 py-0">
-        <CardTitle className="mt-3">{title}</CardTitle>
-      </CardHeader>
+    <Card
+      className={`h-full rounded-md overflow-hidden ${
+        showCardTitle ? "py-2.5" : "pt-0 pb-2.5"
+      } gap-3 ${className}`}
+    >
+      {showCardTitle && (
+        <CardHeader className="pl-4 pr-2 py-0">
+          <CardTitle className="mt-3">{title}</CardTitle>
+        </CardHeader>
+      )}
       {/* video player */}
       <CardContent className="p-0">
         <div className="relative w-full h-0 pb-[56.25%] overflow-hidden">
@@ -102,7 +102,6 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
           )}
         </div>
       </CardContent>
-
       {/* video info */}
       <CardContent className="py-2 px-4">
         {/* reason why it's a match */}

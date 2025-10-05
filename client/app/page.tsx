@@ -28,7 +28,6 @@ export default function Home() {
     []
   );
   const [searchType, setSearchType] = useState("category");
-  const isInitialLoad = useRef(true);
 
   // initial load
   useEffect(() => {
@@ -36,14 +35,15 @@ export default function Home() {
   }, []);
 
   const handleSearch = async (query?: string, currentCursor?: string) => {
-    console.log("currentCursor : ", currentCursor);
-    console.log("searchType : ", searchType);
-
     const searchTerm = query || searchQuery;
     if (!searchTerm.trim()) {
       setError("Please enter an industry or category to search");
       return;
     }
+
+    console.log("=== SEARCH START ===");
+    console.log("searchType at start:", searchType);
+    console.log("currentCursor:", currentCursor);
 
     // if loading more
     if (currentCursor) {
@@ -57,12 +57,14 @@ export default function Home() {
     try {
       let result;
       if (searchType === "category") {
+        console.log("finding sponsors");
         result = (await findSponsors(
           searchTerm.trim(),
           undefined,
           currentCursor
         )) as any;
       } else {
+        console.log("finding sponsorships");
         result = (await findSponsorships(
           searchTerm.trim(),
           undefined,
@@ -72,23 +74,32 @@ export default function Home() {
 
       const results = result.results;
       console.log("results : ", results);
-
+      console.log("search type : ", searchType);
       if (currentCursor) {
         // If there's a current cursor, append results to existing ones
         if (searchType === "category") {
+          console.log("APPENDING to sponsor results");
           setSponsorResults((prevResults) => [...prevResults, ...results]);
         } else {
+          console.log("APPENDING to sponsorship results");
           setSponsorshipResults((prevResults) => [...prevResults, ...results]);
         }
       } else {
         // If no cursor, replace results (new search) - only clear the current search type results
         if (searchType === "category") {
+          console.log("REPLACING sponsor results");
           setSponsorResults(results);
+          // reset
+          setSponsorshipResults([]);
         } else {
+          console.log("REPLACING sponsorship results");
           setSponsorshipResults(results);
+          // reset
+          setSponsorResults([]);
         }
       }
 
+      console.log("=== SEARCH END ===");
       // set next cursor if available
       setCursor(result.next_cursor);
     } catch (err) {
