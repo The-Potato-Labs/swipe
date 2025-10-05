@@ -3,11 +3,7 @@
 import Link from "next/link";
 import { UserRound, Tag, Calendar, Locate } from "lucide-react";
 import { Sponsorship } from "@/lib/models/sponsorship";
-import {
-  formatTextToTitleCase,
-  toTitleCase,
-  formatEvidenceSource,
-} from "@/lib/utils";
+import { toTitleCase } from "@/lib/utils";
 
 interface SponsorshipMetadataProps {
   sponsorship: Sponsorship;
@@ -37,7 +33,7 @@ export default function SponsorshipMetadata({
       </p>
       <p className="flex items-center gap-2">
         <Tag className="w-4 h-4 text-slate-400" />
-        {formatTextToTitleCase(sponsor_type)}
+        {toTitleCase(formatSponsorType(sponsor_type))}
       </p>
       {sponsorship.evidence && (
         <p className="flex items-center gap-2">
@@ -49,4 +45,20 @@ export default function SponsorshipMetadata({
       )}
     </div>
   );
+}
+
+function formatSponsorType(sponsor_type: string) {
+  if (sponsor_type === "explicit_ad") {
+    return "Ad";
+  } else {
+    return sponsor_type.replace(/_/g, " ");
+  }
+}
+
+// format evidence source - return "video" if source is "transcript", otherwise return the source
+export function formatEvidenceSource(
+  source: string | undefined | null
+): string {
+  if (!source) return "";
+  return source.toLowerCase() === "transcript" ? "video" : source;
 }
