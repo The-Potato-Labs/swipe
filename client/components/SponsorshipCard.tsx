@@ -110,7 +110,7 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
         >
           <span className="flex items-center gap-2 text-sm border px-2 py-1.5 rounded-sm hover:bg-white/10">
             <Sparkles className="w-4 h-4 fill-slate-400 stroke-transparent" />
-            Get Insights
+            Analyze Video
           </span>
         </SponsorshipSheet>
       </CardFooter>
