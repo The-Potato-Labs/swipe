@@ -2,19 +2,17 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { UserRound, Tag, Calendar, ExternalLink } from "lucide-react";
-import { Sponsorship } from "@/lib/models/sponsorship";
+import { UserRound, Tag, Calendar } from "lucide-react";
+import { Sponsor } from "@/lib/models/sponsors";
 import { formatTextToTitleCase } from "@/lib/utils";
 
-interface SponsorshipMetadataProps {
-  sponsorship: Sponsorship;
+interface SponsorMetadataProps {
+  sponsor: Sponsor;
 }
 
-export default function SponsorshipMetadata({
-  sponsorship,
-}: SponsorshipMetadataProps) {
+export default function SponsorMetadata({ sponsor }: SponsorMetadataProps) {
   const { publication_name, publication_url, sponsor_type, published_date } =
-    sponsorship;
+    sponsor.most_recent_ad;
 
   return (
     <div className="flex flex-col gap-2 text-slate-300">
