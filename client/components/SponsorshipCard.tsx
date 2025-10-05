@@ -85,18 +85,15 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center p-4">
-                  <Play className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-500">Click to play video</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => window.open(videoUrl, "_blank")}
-                  >
-                    Open in YouTube
-                  </Button>
-                </div>
+                <button
+                  onClick={() => window.open(videoUrl, "_blank")}
+                  className="hover:bg-white/5 text-center p-4 w-full h-full flex flex-col gap-3 items-center justify-center hover:text-white hover:cursor-pointer"
+                >
+                  <div className="bg-red-600 rounded-full p-4">
+                    <Play className="w-8 h-8 text-white" />
+                  </div>
+                  <p className="text-sm">View on YouTube</p>
+                </button>
               )}
             </div>
           )}
