@@ -34,22 +34,8 @@ export function getYoutubeThumbnail(url: string): string | null {
     : null;
 }
 
-// format text by removing underscores and converting to title case
-export function formatTextToTitleCase(text: string | undefined | null): string {
-  if (!text) return "";
-  return text.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-}
-
 // convert text to title case (capitalize first letter of each word)
 export function toTitleCase(text: string | undefined | null): string {
   if (!text) return "";
   return text.replace(/\b\w/g, (l) => l.toUpperCase());
-}
-
-// format evidence source - return "video" if source is "transcript", otherwise return the source
-export function formatEvidenceSource(
-  source: string | undefined | null
-): string {
-  if (!source) return "";
-  return source.toLowerCase() === "transcript" ? "video" : source;
 }
