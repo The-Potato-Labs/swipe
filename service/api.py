@@ -15,6 +15,7 @@ import os
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from .twelvelabs_analyze_brand import (
@@ -56,6 +57,17 @@ class AnalyzeRequest(BaseModel):
 
 
 app = FastAPI(title="Brand Analysis API", version="1.0.0")
+
+# CORS for frontend integration
+_cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = [o.strip() for o in _cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
