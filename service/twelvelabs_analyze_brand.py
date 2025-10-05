@@ -755,12 +755,16 @@ def _download_youtube_to_temp(url: str) -> Optional[str]:
         return None
 
     outtmpl = os.path.join(tempfile.gettempdir(), "twelvelabs-%(id)s.%(ext)s")
-    ydl_opts = {
+    ydl_opts: Dict[str, Any] = {
         "quiet": True,
         "format": "mp4/best",
         "noplaylist": True,
         "outtmpl": outtmpl,
     }
+    # Optional cookies from a local browser (e.g., "chrome", "brave", "edge", "firefox")
+    browser = os.getenv("YT_DLP_COOKIES_FROM_BROWSER")
+    if browser:
+        ydl_opts["cookiesfrombrowser"] = browser
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
