@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import SponsorResultCard from "@/components/SponsorResultCard";
 import SponsorshipResultCard from "@/components/SponsorshipResultCard";
 import { Button } from "@/components/ui/button";
@@ -17,36 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface SearchTypeDropdownProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  className?: string;
-}
-
-function SearchTypeDropdown({
-  value,
-  onValueChange,
-  className,
-}: SearchTypeDropdownProps) {
-  return (
-    <Select
-      value={value}
-      onValueChange={onValueChange}
-    >
-      <SelectTrigger className={className}>
-        <SelectValue placeholder="Select a category" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="category">Video Category</SelectItem>
-        <SelectItem value="brand">Brand</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
-
-// TODO: just do results combined for sponsors and sponsorships
-// reset if search changes
-
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("tech");
   const [isSearching, setIsSearching] = useState(false);
@@ -60,14 +30,10 @@ export default function Home() {
   const [searchType, setSearchType] = useState("category");
   const isInitialLoad = useRef(true);
 
+  // initial load
   useEffect(() => {
     handleSearch();
   }, []);
-
-  useEffect(() => {
-    // Don't clear anything when search type changes
-    isInitialLoad.current = false;
-  }, [searchType]);
 
   const handleSearch = async (query?: string, currentCursor?: string) => {
     console.log("currentCursor : ", currentCursor);
@@ -115,13 +81,11 @@ export default function Home() {
           setSponsorshipResults((prevResults) => [...prevResults, ...results]);
         }
       } else {
-        // If no cursor, replace results (new search)
+        // If no cursor, replace results (new search) - only clear the current search type results
         if (searchType === "category") {
           setSponsorResults(results);
-          setSponsorshipResults([]); // Clear sponsorship results when searching categories
         } else {
           setSponsorshipResults(results);
-          setSponsorResults([]); // Clear sponsor results when searching brands
         }
       }
 
@@ -142,13 +106,9 @@ export default function Home() {
     }
   };
 
-  // get current results
-  const getCurrentResults = () => {
-    return searchType === "category" ? sponsorResults : sponsorshipResults;
-  };
-
+  // has results
   const hasResults = () => {
-    return getCurrentResults().length > 0;
+    return sponsorResults.length > 0 || sponsorshipResults.length > 0;
   };
 
   return (
@@ -212,35 +172,37 @@ export default function Home() {
           id="match-grid"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
-          {/* if no results, then show You've reached the end otherwise, click load more results*/}
-          {hasResults() &&
-            getCurrentResults().map((result, index) => (
-              <div key={index}>
-                {searchType === "category" ? (
-                  <SponsorResultCard
-                    sponsor={result as Sponsor}
-                    searchQuery={searchQuery}
-                    cursor={cursor}
-                  />
-                ) : (
-                  <SponsorshipResultCard
-                    sponsorship={result as Sponsorship}
-                    searchQuery={searchQuery}
-                    cursor={cursor}
-                  />
-                )}
-              </div>
-            ))}
+          {/* Display all results (both sponsors and sponsorships) */}
+          {hasResults() && !isSearching && (
+            <>
+              {sponsorResults.map((result, index) => (
+                <SponsorResultCard
+                  key={`sponsor-${index}`}
+                  sponsor={result}
+                  searchQuery={searchQuery}
+                  cursor={cursor}
+                />
+              ))}
+              {sponsorshipResults.map((result, index) => (
+                <SponsorshipResultCard
+                  key={`sponsorship-${index}`}
+                  sponsorship={result}
+                  searchQuery={searchQuery}
+                  cursor={cursor}
+                />
+              ))}
+            </>
+          )}
         </div>
-        {cursor ? (
+        {cursor || isSearching ? (
           <Button
-            onClick={() => handleSearch(searchQuery, cursor)}
-            disabled={isLoading}
+            onClick={() => handleSearch(searchQuery, cursor || undefined)}
+            disabled={isSearching || isLoading}
             className="px-6 self-center text-base"
             variant="ghost"
           >
-            {isLoading && <Spinner />}
-            {isLoading ? "Loading..." : "Load More"}
+            {(isSearching || isLoading) && <Spinner />}
+            {isSearching || isLoading ? "Loading..." : "Load More"}
           </Button>
         ) : (
           <p className="text-center text-base text-gray-500">
@@ -249,5 +211,33 @@ export default function Home() {
         )}
       </div>
     </main>
+  );
+}
+
+// search type
+interface SearchTypeDropdownProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  className?: string;
+}
+
+function SearchTypeDropdown({
+  value,
+  onValueChange,
+  className,
+}: SearchTypeDropdownProps) {
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <SelectTrigger className={className}>
+        <SelectValue placeholder="Select a category" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="category">Video Category</SelectItem>
+        <SelectItem value="brand">Brand</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
