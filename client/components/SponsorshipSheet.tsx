@@ -53,8 +53,8 @@ const SponsorshipSheet: React.FC<SponsorshipSheetProps> = ({
             </span>
           </SheetDescription>
         </SheetHeader>
-        {/* mirrors content from card */}
         <div className="flex flex-col gap-4 px-4 text-sm">
+          {/* same as content from card */}
           {sheetChildren}
           {/* enriched details */}
           {enrichedDetails.map((detail, index) => (
