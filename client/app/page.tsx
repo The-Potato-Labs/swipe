@@ -17,6 +17,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface SearchTypeDropdownProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  className?: string;
+}
+
+function SearchTypeDropdown({
+  value,
+  onValueChange,
+  className,
+}: SearchTypeDropdownProps) {
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <SelectTrigger className={className}>
+        <SelectValue placeholder="Select a category" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="category">Video Category</SelectItem>
+        <SelectItem value="brand">Brand</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 // TODO: just do results combined for sponsors and sponsorships
 // reset if search changes
 
@@ -115,6 +142,7 @@ export default function Home() {
     }
   };
 
+  // get current results
   const getCurrentResults = () => {
     return searchType === "category" ? sponsorResults : sponsorshipResults;
   };
@@ -149,18 +177,10 @@ export default function Home() {
                 className="flex-1"
               />
               <span className="hidden md:block">
-                <Select
+                <SearchTypeDropdown
                   value={searchType}
                   onValueChange={setSearchType}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="category">Creator Category</SelectItem>
-                    <SelectItem value="brand">Brand</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </span>
               <Button
                 onClick={() => handleSearch(searchQuery)}
@@ -171,18 +191,11 @@ export default function Home() {
               </Button>
             </div>
             <span className="flex md:hidden">
-              <Select
+              <SearchTypeDropdown
                 value={searchType}
                 onValueChange={setSearchType}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="category">Creator Category</SelectItem>
-                  <SelectItem value="brand">Brand</SelectItem>
-                </SelectContent>
-              </Select>
+                className="w-full"
+              />
             </span>
           </div>
         </div>
