@@ -51,6 +51,7 @@ def _require_sdk():
     try:
         from twelvelabs import TwelveLabs  # type: ignore
         from twelvelabs.types.response_format import ResponseFormat  # type: ignore
+
         return TwelveLabs, ResponseFormat
     except Exception as exc:  # noqa: BLE001
         raise _SDKNotInstalled(
@@ -89,15 +90,14 @@ PROMPT_TEMPLATE = (
     "- Never include any text outside the JSON.\n\n"
     "JSON schema:\n{json_schema}\n\n"
     "Instructions:\n"
-    "1. Segment the video into 3–8 meaningful chapters; fill id, title, summary, timestamps.\n"
-    "2. List all brand mentions across the entire video in brand_mentions.\n"
-    "3. For sponsor/ad reads (video section covering the brand), set mention_type=\"sponsor_segment\" and provide a detailed description with start/end.\n"
-    "4. For on-screen elements (brand name, logo, website, QR, coupon), set mention_type=\"on_screen_element\" and subtype accordingly; include placement and start/end.\n"
-    "5. Also capture verbal_mention, product_visual, product_demo, comparison_section, call_to_action (\"use code...\"), affiliate_disclosure (\"this video is sponsored by...\"), giveaway_or_promo, and end_screen references.\n"
-    "6. If none detected, return an empty array for brand_mentions.\n"
-    "7. If a mention is not tied to a single chapter, omit chapter_id.\n"
-    "8. Add main topics and 3–8 concise hashtags that reflect the video’s themes.\n"
-    "9. Output strictly valid JSON (no markdown, no commentary).\n"
+    "1. Segment the video into meaningful chapters; fill id, title, summary, timestamps. The sponsor mentions should be their individual segments, if it's longer than 5 seconds.\n"
+    "2. List all brand mentions across the entire video in brand_mentions. Use start and end timestamps if it's longer than 5 seconds, otherwise provide the start timestamp.\n"
+    '3. Brand mentions can be of these types: brand_logo_placement, brand_name_text, brand_website_placement, brand_qr_code_placement, brand_coupon_placement, verbal_mention, product_visual, product_demo, comparison_section, call_to_action ("use code..."), affiliate_disclosure ("this video is sponsored by..."), giveaway_or_promo, and end_screen references.\n'
+    "4. Brand mentions can overlay (e.g. there's a brand_logo_placement within the broader product_demo video segment).\n"
+    "5. If none detected, return an empty array for brand_mentions.\n"
+    "6. If a mention is not tied to a single chapter, omit chapter_id.\n"
+    "7. Add main topics and 3–8 concise hashtags that reflect the video’s themes.\n"
+    "8. Output strictly valid JSON (no markdown, no commentary).\n"
 )
 
 
@@ -216,6 +216,7 @@ class TwelveLabsBrandAnalyzer:
     def from_env(cls) -> "TwelveLabsBrandAnalyzer":
         # Keep consistent with existing modules that use dotenv
         from dotenv import load_dotenv
+
         # Load default .env (cwd) and also service/.env if present to be robust
         load_dotenv()
         try:
@@ -231,8 +232,12 @@ class TwelveLabsBrandAnalyzer:
             api_key=api_key,
             index_id=os.getenv("TWELVE_LABS_INDEX_ID") or None,
             index_name=os.getenv("TWELVE_LABS_INDEX_NAME", "swipe-summaries"),
-            enable_pegasus=(os.getenv("TWELVE_LABS_ENABLE_PEGASUS", "true").lower() != "false"),
-            enable_marengo=(os.getenv("TWELVE_LABS_ENABLE_MARENGO", "false").lower() == "true"),
+            enable_pegasus=(
+                os.getenv("TWELVE_LABS_ENABLE_PEGASUS", "true").lower() != "false"
+            ),
+            enable_marengo=(
+                os.getenv("TWELVE_LABS_ENABLE_MARENGO", "false").lower() == "true"
+            ),
             allow_youtube_download_fallback=(
                 os.getenv("TWELVE_LABS_ALLOW_YT_DOWNLOAD", "true").lower() != "false"
             ),
@@ -244,9 +249,8 @@ class TwelveLabsBrandAnalyzer:
         # Generate JSON Schema from Pydantic models for inclusion in prompt
         schema = BrandAnalysisOutput.model_json_schema()
         schema_str = json.dumps(schema, ensure_ascii=False)
-        return (
-            PROMPT_TEMPLATE.replace("{brand}", brand)
-            .replace("{json_schema}", schema_str)
+        return PROMPT_TEMPLATE.replace("{brand}", brand).replace(
+            "{json_schema}", schema_str
         )
 
     def analyze_video(
@@ -270,21 +274,30 @@ class TwelveLabsBrandAnalyzer:
         prompt = self._build_prompt(brand)
 
         started = perf_counter()
-        rf = self._client.response_format if hasattr(self._client, "response_format") else None
+        rf = (
+            self._client.response_format
+            if hasattr(self._client, "response_format")
+            else None
+        )
         # Construct ResponseFormat directly if client helper is absent
         if rf is None:
             try:
                 # Prefer using the imported ResponseFormat type lazily
                 from twelvelabs.types.response_format import ResponseFormat as _RF  # type: ignore
+
                 rf = _RF(type="json_schema", json_schema=BRAND_ANALYSIS_SCHEMA)
             except Exception:
                 rf = None
         resp = self._client.analyze(
             video_id=video_id,
             prompt=prompt,
-            temperature=(temperature if temperature is not None else self.config.temperature),
+            temperature=(
+                temperature if temperature is not None else self.config.temperature
+            ),
             response_format=rf,
-            max_tokens=(max_tokens if max_tokens is not None else self.config.max_tokens),
+            max_tokens=(
+                max_tokens if max_tokens is not None else self.config.max_tokens
+            ),
         )
         elapsed_ms = int((perf_counter() - started) * 1000)
 
@@ -292,7 +305,10 @@ class TwelveLabsBrandAnalyzer:
         if hasattr(resp, "model_dump"):
             raw = resp.model_dump()
         else:  # pragma: no cover - fallback for unexpected SDK objects
-            raw = {k: getattr(resp, k, None) for k in ("id", "data", "finish_reason", "usage")}
+            raw = {
+                k: getattr(resp, k, None)
+                for k in ("id", "data", "finish_reason", "usage")
+            }
 
         errors: list[ErrorDetail] = []
         parsed_obj: Optional[BrandAnalysisOutput] = None
@@ -452,13 +468,15 @@ class TwelveLabsBrandAnalyzer:
         if self.config.enable_pegasus:
             models.append(
                 IndexesCreateRequestModelsItem(
-                    model_name="pegasus1.2", model_options=list(self.config.model_options)
+                    model_name="pegasus1.2",
+                    model_options=list(self.config.model_options),
                 )
             )
         if self.config.enable_marengo:
             models.append(
                 IndexesCreateRequestModelsItem(
-                    model_name="marengo2.7", model_options=list(self.config.model_options)
+                    model_name="marengo2.7",
+                    model_options=list(self.config.model_options),
                 )
             )
         try:
@@ -504,17 +522,23 @@ class TwelveLabsBrandAnalyzer:
                 try:
                     # Ensure metadata is a proper dict and serialize with strict JSON
                     if not isinstance(metadata, dict):
-                        print(f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}")
+                        print(
+                            f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}"
+                        )
                         user_metadata = "{}"
                     else:
-                        user_metadata = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
+                        user_metadata = json.dumps(
+                            metadata, ensure_ascii=False, separators=(",", ":")
+                        )
                         print(f"[ingest] Serialized metadata: {user_metadata}")
                         # Validate the JSON is actually valid
                         json.loads(user_metadata)
                 except (TypeError, ValueError, json.JSONDecodeError) as e:
-                    print(f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object")
+                    print(
+                        f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object"
+                    )
                     user_metadata = "{}"
-            
+
             task = self._client.tasks.create(
                 index_id=index_id,
                 video_url=video_url,
@@ -534,22 +558,34 @@ class TwelveLabsBrandAnalyzer:
                     print(f"[ingest] uploading local file to Twelve Labs: {temp_path}")
                     with open(temp_path, "rb") as fh:
                         # Handle metadata serialization more robustly
-                        user_metadata = "{}"  # Default to empty JSON object instead of None
+                        user_metadata = (
+                            "{}"  # Default to empty JSON object instead of None
+                        )
                         if metadata:
                             try:
                                 # Ensure metadata is a proper dict and serialize with strict JSON
                                 if not isinstance(metadata, dict):
-                                    print(f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}")
+                                    print(
+                                        f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}"
+                                    )
                                     user_metadata = "{}"
                                 else:
-                                    user_metadata = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
-                                    print(f"[ingest] Serialized metadata: {user_metadata}")
+                                    user_metadata = json.dumps(
+                                        metadata,
+                                        ensure_ascii=False,
+                                        separators=(",", ":"),
+                                    )
+                                    print(
+                                        f"[ingest] Serialized metadata: {user_metadata}"
+                                    )
                                     # Validate the JSON is actually valid
                                     json.loads(user_metadata)
                             except (TypeError, ValueError, json.JSONDecodeError) as e:
-                                print(f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object")
+                                print(
+                                    f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object"
+                                )
                                 user_metadata = "{}"
-                        
+
                         task = self._client.tasks.create(
                             index_id=index_id,
                             video_file=fh,
@@ -571,7 +607,9 @@ class TwelveLabsBrandAnalyzer:
         print(f"[index] waiting for task {task_id} to complete")
         done = self._wait_for_task(task_id)
         if getattr(done, "status", None) != "ready":
-            raise RuntimeError(f"Indexing failed: status={getattr(done, 'status', None)}")
+            raise RuntimeError(
+                f"Indexing failed: status={getattr(done, 'status', None)}"
+            )
         video_id = getattr(done, "video_id", None)
         if not video_id:
             raise RuntimeError("Indexing completed but video_id missing in response.")
@@ -597,7 +635,9 @@ class TwelveLabsBrandAnalyzer:
         deadline = time.time() + self.config.timeout_sec
         while True:
             try:
-                _ = self._client.indexes.videos.retrieve(index_id=index_id, video_id=video_id)
+                _ = self._client.indexes.videos.retrieve(
+                    index_id=index_id, video_id=video_id
+                )
                 return
             except Exception:
                 if time.time() > deadline:
@@ -619,8 +659,15 @@ def _cli() -> None:
     src.add_argument("--youtube-url", help="YouTube URL to ingest then analyze")
     src.add_argument("--video-url", help="Direct video URL to ingest then analyze")
     parser.add_argument("--brand", required=True, help="Brand name to detect")
-    parser.add_argument("--temperature", type=float, default=None, help="Sampling temperature (default 0.2)")
-    parser.add_argument("--max-tokens", type=int, default=None, help="Maximum tokens for generation")
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Sampling temperature (default 0.2)",
+    )
+    parser.add_argument(
+        "--max-tokens", type=int, default=None, help="Maximum tokens for generation"
+    )
     args = parser.parse_args()
 
     analyzer = TwelveLabsBrandAnalyzer.from_env()
@@ -748,6 +795,7 @@ def _init_redis(redis_url: Optional[str]):
     if rest_url and rest_token:
         try:
             from upstash_redis import Redis as _UpstashRedis  # type: ignore
+
             client = _UpstashRedis(url=rest_url, token=rest_token)
             # liveness check: real round-trip
             try:
@@ -804,7 +852,7 @@ def _init_redis(redis_url: Optional[str]):
 
                 def set(self, key: str, value: str):
                     res = self._cmd("SET", key, value)
-                    return (isinstance(res, str) and res.upper() == "OK")
+                    return isinstance(res, str) and res.upper() == "OK"
 
             client = _UpstashRESTClient(rest_url, rest_token)
             # Quick liveness check with round-trip
@@ -830,7 +878,7 @@ def _init_redis(redis_url: Optional[str]):
         )
         # Upstash via redis protocol requires TLS (rediss://)
         if redis_url and "upstash.io" in redis_url and redis_url.startswith("redis://"):
-            redis_url = "rediss://" + redis_url[len("redis://"):]
+            redis_url = "rediss://" + redis_url[len("redis://") :]
         client = (
             redis.Redis.from_url(redis_url, **kwargs)
             if redis_url
