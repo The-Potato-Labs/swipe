@@ -6,6 +6,8 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
+import { useState } from "react";
 
 interface SponsorshipSheetProps {
   videoUrl: string;
@@ -33,6 +35,8 @@ const SponsorshipSheet: React.FC<SponsorshipSheetProps> = ({
   children,
   sheetChildren,
 }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
   // TODO: based on video url, extract more information
 
   return (
@@ -57,15 +61,23 @@ const SponsorshipSheet: React.FC<SponsorshipSheetProps> = ({
           {/* same as content from card */}
           {sheetChildren}
           {/* enriched details */}
-          {enrichedDetails.map((detail, index) => (
-            <div
-              key={`detail-${index}`}
-              className="flex flex-col gap-0.5"
-            >
-              <h3>{detail.label}</h3>
-              <p className="text-sm text-slate-400">{detail.content}</p>
+          {/* is analyzing video */}
+          {isLoading ? (
+            <div className="flex flex-row items-center gap-2">
+              <Spinner className="w-4 h-4 text-slate-400" />{" "}
+              <p>Analyzing video...</p>
             </div>
-          ))}
+          ) : (
+            enrichedDetails.map((detail, index) => (
+              <div
+                key={`detail-${index}`}
+                className="flex flex-col gap-0.5"
+              >
+                <h3>{detail.label}</h3>
+                <p className="text-sm text-slate-400">{detail.content}</p>
+              </div>
+            ))
+          )}
         </div>
       </SheetContent>
     </Sheet>
