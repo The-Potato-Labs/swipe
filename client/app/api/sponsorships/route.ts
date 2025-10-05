@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const UPRIVER_API_KEY = process.env.UPRIVER_API_KEY;
+const UPRIVER_API_KEY = process.env.NEXT_PUBLIC_UPRIVER_API_KEY;
 const SPONSORSHIP_API = "https://api.upriver.ai/v1/sponsorships";
 
 export async function GET(request: NextRequest) {
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     // Configure required parameters
     params.append("platforms", "youtube");
     params.append("top_k_categories", "5");
+    params.append("include_evidence", "true");
 
     const url = `${SPONSORSHIP_API}?${params}`;
 

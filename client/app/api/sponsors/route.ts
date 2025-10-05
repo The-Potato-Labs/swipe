@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const categories = searchParams.get("categories");
   const publication_url = searchParams.get("publication_url");
+  const cursor = searchParams.get("cursor");
 
   if (!categories && !publication_url) {
     return NextResponse.json(
@@ -31,10 +32,14 @@ export async function GET(request: NextRequest) {
     if (publication_url) {
       params.append("publication_url", publication_url);
     }
+    if (cursor) {
+      params.append("cursor", cursor);
+    }
 
     // Configure required parameters
     params.append("platforms", "youtube");
     params.append("top_k_categories", "5");
+    params.append("include_evidence", "true");
 
     const url = `${SPONSOR_API}?${params}`;
 

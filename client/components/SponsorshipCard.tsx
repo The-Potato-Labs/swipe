@@ -33,10 +33,11 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
   const [showEmbed, setShowEmbed] = useState(true);
 
   // Convert YouTube URL to embed format
-  const embedUrl = convertYoutubeUrlToEmbedUrl(videoUrl, offset_seconds);
+  const watchUrl = videoUrl;
+  const embedUrl = convertYoutubeUrlToEmbedUrl(watchUrl, offset_seconds);
   console.log("embed url : ", embedUrl);
   // Get YouTube thumbnail URL
-  const thumbnailUrl = getYoutubeThumbnail(videoUrl);
+  const thumbnailUrl = getYoutubeThumbnail(watchUrl);
 
   return (
     <Card
@@ -84,7 +85,7 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
                 </div>
               ) : (
                 <button
-                  onClick={() => window.open(videoUrl, "_blank")}
+                  onClick={() => window.open(watchUrl, "_blank")}
                   className="hover:bg-white/5 text-center p-4 w-full h-full flex flex-col gap-3 items-center justify-center hover:text-white hover:cursor-pointer"
                 >
                   <div className="bg-red-600 rounded-full p-4">
@@ -105,6 +106,8 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
       <CardFooter className="pb-3 px-4">
         <SponsorshipSheet
           videoUrl={embedUrl}
+          sourceUrl={watchUrl}
+          brand={title}
           title={title}
           sheetChildren={children}
         >

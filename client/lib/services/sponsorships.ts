@@ -1,6 +1,7 @@
 import { Sponsorship } from "@/lib/models/sponsorship";
 import { Sponsor } from "@/lib/models/sponsors";
 
+// Client-side direct calls using a public key
 const UPRIVER_API_KEY = process.env.NEXT_PUBLIC_UPRIVER_API_KEY;
 const SPONSOR_API = "https://api.upriver.ai/v1/sponsors";
 const SPONSORSHIP_API = "https://api.upriver.ai/v1/sponsorships";
@@ -106,6 +107,12 @@ async function findSponsors(
 
     const url = `${SPONSOR_API}?${params}`;
 
+    if (!UPRIVER_API_KEY) {
+      throw new Error(
+        "Missing NEXT_PUBLIC_UPRIVER_API_KEY. Add it to client/.env.local and restart dev server."
+      );
+    }
+
     const sponsors = await makeRequest(url, {
       method: "GET",
       headers: {
@@ -150,6 +157,12 @@ async function findSponsorships(
     params.append("include_evidence", "true");
 
     const url = `${SPONSORSHIP_API}?${params}`;
+    
+    if (!UPRIVER_API_KEY) {
+      throw new Error(
+        "Missing NEXT_PUBLIC_UPRIVER_API_KEY. Add it to client/.env.local and restart dev server."
+      );
+    }
     console.log("url : ", url);
 
     const sponsorships = await makeRequest(url, {
