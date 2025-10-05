@@ -5,11 +5,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardAction,
   CardFooter,
 } from "@/components/ui/card";
-import { HeartIcon, Play, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Play, Sparkles } from "lucide-react";
 import SponsorshipSheet from "@/components/SponsorshipSheet";
 import { convertYoutubeUrlToEmbedUrl, getYoutubeThumbnail } from "@/lib/utils";
 import { useState } from "react";
