@@ -47,6 +47,7 @@ export default function SponsorshipMetadata({
   );
 }
 
+// format sponsor type - return "Ad" if sponsor type is "explicit_ad", otherwise return the sponsor type
 function formatSponsorType(sponsor_type: string) {
   if (sponsor_type === "explicit_ad") {
     return "Ad";
