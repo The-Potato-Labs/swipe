@@ -103,12 +103,9 @@ const SponsorshipCard: React.FC<SponsorshipCardProps> = ({
         </div>
       </CardContent>
       {/* video info */}
-      <CardContent className="py-2 px-4">
+      <CardContent className="pt-1.5 pb-1 px-4 flex flex-col gap-2">
         {/* reason why it's a match */}
-        {/* */}
-        <div className="flex flex-col gap-2">
-          <CardDescription>{children}</CardDescription>
-        </div>
+        <CardDescription>{children}</CardDescription>
       </CardContent>
       <CardFooter className="pb-3 px-4">
         <SponsorshipSheet
