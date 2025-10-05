@@ -481,6 +481,7 @@ class TwelveLabsBrandAnalyzer:
     def _ingest_from_url(
         self, index_id: str, url: str, *, metadata: Optional[Dict[str, Any]] = None
     ) -> str:
+        print(f"[ingest] Received metadata: {metadata} (type: {type(metadata)})")
         video_url = url
         if _is_youtube_url(url):
             # Try RapidAPI resolver first
@@ -497,10 +498,27 @@ class TwelveLabsBrandAnalyzer:
 
         try:
             print(f"[ingest] creating tasks.create with video_url")
+            # Handle metadata serialization more robustly
+            user_metadata = "{}"  # Default to empty JSON object instead of None
+            if metadata:
+                try:
+                    # Ensure metadata is a proper dict and serialize with strict JSON
+                    if not isinstance(metadata, dict):
+                        print(f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}")
+                        user_metadata = "{}"
+                    else:
+                        user_metadata = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
+                        print(f"[ingest] Serialized metadata: {user_metadata}")
+                        # Validate the JSON is actually valid
+                        json.loads(user_metadata)
+                except (TypeError, ValueError, json.JSONDecodeError) as e:
+                    print(f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object")
+                    user_metadata = "{}"
+            
             task = self._client.tasks.create(
                 index_id=index_id,
                 video_url=video_url,
-                user_metadata=(json.dumps(metadata, ensure_ascii=False) if metadata else None),
+                user_metadata=user_metadata,
             )
             task_id = getattr(task, "id", None) or getattr(task, "_id", None)
             print(f"[ingest] upload by URL accepted; task_id:{task_id}")
@@ -515,12 +533,27 @@ class TwelveLabsBrandAnalyzer:
                 try:
                     print(f"[ingest] uploading local file to Twelve Labs: {temp_path}")
                     with open(temp_path, "rb") as fh:
+                        # Handle metadata serialization more robustly
+                        user_metadata = "{}"  # Default to empty JSON object instead of None
+                        if metadata:
+                            try:
+                                # Ensure metadata is a proper dict and serialize with strict JSON
+                                if not isinstance(metadata, dict):
+                                    print(f"[ingest] Warning: metadata is not a dict, using empty object: {type(metadata)}")
+                                    user_metadata = "{}"
+                                else:
+                                    user_metadata = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
+                                    print(f"[ingest] Serialized metadata: {user_metadata}")
+                                    # Validate the JSON is actually valid
+                                    json.loads(user_metadata)
+                            except (TypeError, ValueError, json.JSONDecodeError) as e:
+                                print(f"[ingest] Warning: Failed to serialize metadata: {e}, using empty object")
+                                user_metadata = "{}"
+                        
                         task = self._client.tasks.create(
                             index_id=index_id,
                             video_file=fh,
-                            user_metadata=(
-                                json.dumps(metadata, ensure_ascii=False) if metadata else None
-                            ),
+                            user_metadata=user_metadata,
                         )
                     task_id = getattr(task, "id", None) or getattr(task, "_id", None)
                     print(f"[ingest] upload completed; task_id:{task_id}")
