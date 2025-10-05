@@ -14,10 +14,13 @@ interface SponsorshipResultCardProps {
 const SponsorshipResultCard = memo(function SponsorshipResultCard({
   sponsorship,
 }: SponsorshipResultCardProps) {
+  console.log("offset seconds : ", sponsorship.evidence?.offset_seconds);
   return (
     <SponsorshipCard
       videoUrl={sponsorship.content_url}
-      title={sponsorship.content_title}
+      offset_seconds={sponsorship.evidence?.offset_seconds}
+      title={sponsorship.partner_name}
+      showCardTitle={false}
     >
       <SponsorshipMetadata sponsorship={sponsorship} />
     </SponsorshipCard>

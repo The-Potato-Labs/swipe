@@ -88,7 +88,6 @@ async function findSponsors(
   cursor?: string
 ) {
   try {
-    console.log("cursor : ", cursor);
     const params = new URLSearchParams();
 
     if (categories) {
@@ -101,6 +100,10 @@ async function findSponsors(
       params.append("cursor", cursor);
     }
 
+    params.append("platforms", "youtube");
+    params.append("top_k_categories", "5");
+    params.append("include_evidence", "true");
+
     const url = `${SPONSOR_API}?${params}`;
 
     const sponsors = await makeRequest(url, {
@@ -108,7 +111,7 @@ async function findSponsors(
       headers: {
         "X-Api-Key": UPRIVER_API_KEY!,
       },
-      timeout: 5000,
+      timeout: 999999,
     });
     return sponsors;
   } catch (error) {
@@ -144,6 +147,7 @@ async function findSponsorships(
 
     params.append("platforms", "youtube");
     params.append("top_k_categories", "5");
+    params.append("include_evidence", "true");
 
     const url = `${SPONSORSHIP_API}?${params}`;
     console.log("url : ", url);

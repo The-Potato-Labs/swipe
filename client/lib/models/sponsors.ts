@@ -1,9 +1,4 @@
-export interface Evidence {
-  source: string;
-  excerpt: string;
-  offset_seconds: number;
-  confidence: number;
-}
+import { Evidence } from "./evidence";
 
 export interface MostRecentAd {
   publication_name: string;
